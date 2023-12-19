@@ -6,40 +6,63 @@ from direct.actor.Actor import Actor
 from direct.interval.IntervalGlobal import Sequence
 from panda3d.core import Point3
 from utils.pandas3d_utils import getModelFile 
-from utils.sf_asset_downloader_2 import find_and_download_asset
+from utils.asset_downloader import find_and_download_asset
 import os
 import random
+from utils.CVmodels import ObjectDetector
 
 
-ASSET_PATH = 'C:/Users/Mikea/Computer_Vision_Project/Interactive-Scene-Reconstruction/3DAssets'
+
 AMOUNT_2_QUERY = 50 
+WORLD_CENTER = -8, 42, 0
+IMG_TO_ANALYZE = "test_images/plant_left.jpg"
 
-def has_Asset(item_name, folder_path=ASSET_PATH):
+def has_Asset(item_name, folder_path="3DAssets"):
     # Combine the folder path and item name to get the full path
     full_path = os.path.join(folder_path, item_name)
 
     # Check if the full path (file or folder) exists
     return os.path.exists(full_path)
 
-
 class MyApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
 
         # Disable the camera trackball controls.
-        self.disableMouse()
+        #self.disableMouse()
 
         # Load the environment model.
         self.scene = self.loader.loadModel("models/environment")
         # Reparent the model to render.
         self.scene.reparentTo(self.render)
         # Apply scale and position transforms on the model.
-        self.scene.setScale(0.25, 0.25, 0.25)
-        self.scene.setPos(-8, 42, 0)
+        self.scene.setScale(5, 5, 5)
+        self.scene.setPos(WORLD_CENTER)
 
         # Add the spinCameraTask procedure to the task manager.
-        self.taskMgr.add(self.spinCameraTask, "SpinCameraTask")
+        #self.taskMgr.add(self.spinCameraTask, "SpinCameraTask")
         
+        self.start()
+
+    def start(self, img_to_analyze=IMG_TO_ANALYZE):
+        
+        #image_path = input("Enter the path to an image: ").strip()
+        image_path = img_to_analyze
+        
+        
+        OD = ObjectDetector()
+        
+        objects = OD.getObjects(image_path, confidence_threshold=.5)
+        
+        for object in objects:
+            
+            label = object['label']
+            position = object['position']
+            size = object['size']
+            
+            self.add_to_scene(label, position)
+    
+    def add_panda(self):
         # Load and transform the panda actor.
         self.pandaActor = Actor("models/panda-model",
                                 {"walk": "models/panda-walk4"})
@@ -68,23 +91,6 @@ class MyApp(ShowBase):
                                   posInterval2, hprInterval2,
                                   name="pandaPace")
         self.pandaPace.loop()
-        
-        
-        # add Items 
-        response = " "
-        while response.lower() != "n":
-            
-            to_add = input("What Object would you like to add to the scene? ").strip()
-            pos = [0, 0, 0]
-            pos[1] = 3
-            pos[2] = 2
-            pos[0] = random.randint(-1, 1)
-            
-            #print(pos)
-            self.add_to_scene(to_add, pos)
-            
-            response = input("Continue? (y or n): ")
-
 
     def add_to_scene(self, item_name, position):
         item_name = item_name.lower()
@@ -95,7 +101,7 @@ class MyApp(ShowBase):
                 print("Could not find a model for object {}".format(item_name))
                 return
             
-        item_file_path = "{}\\scene.gltf".format(item_name)
+        item_file_path = "{}//scene.gltf".format(item_name)
         try:
             
             model = self.loader.load_model(getModelFile(item_file_path))
@@ -106,7 +112,7 @@ class MyApp(ShowBase):
             
             print("Added {} to the scene".format(item_name))
         except:
-            print("Could not add {} to the scene".format(item_name))
+            print("Could not add {} to the scene. Try again".format(item_name))    
         
     # Define a procedure to move the camera.
     def spinCameraTask(self, task):
@@ -117,5 +123,7 @@ class MyApp(ShowBase):
         return Task.cont
 
 
-app = MyApp()
-app.run()
+if __name__ == "__main__":
+    
+    app = MyApp()
+    app.run()
